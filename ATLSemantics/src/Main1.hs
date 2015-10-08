@@ -82,10 +82,15 @@ bindingApplicationL :: ModelL -> Element -> (Elements,Links)
 bindingApplicationL lm targetReferenceSource =
     let sourceElement = traceLinkTraversal (sourceModel lm) targetReferenceSource
         sourceReferenceTargets = (referenceBindingFunction lm) (sourceModel lm) sourceElement
-        -- targetReferenceTargets = concat (map (traceLinkResolution es) sourceReferenceTargets) in strict traceLink base on the complete trace
-        targetReferenceTargets = map (matchFunction lm) sourceReferenceTargets
+        --targetReferenceTargets = map (matchFunction lm) sourceReferenceTargets
+        targetReferenceTargets = map (matchFunction' lm) sourceReferenceTargets
     in (targetReferenceTargets,map (\tRT -> (targetReferenceSource,R,tRT)) targetReferenceTargets)
 
+matchFunction' :: ModelL -> Match
+matchFunction' lm e | null targetElement = matchFunction lm e
+                    | otherwise = head targetElement
+                    where targetElement = traceLinkResolution (getElements (targetModel lm)) e                                   
+       
 getL :: ModelL -> Element -> (Elements, ModelL)
 getL lm e | e `elem` validElements lm = (get (targetModel lm) e,lm)
           | otherwise
