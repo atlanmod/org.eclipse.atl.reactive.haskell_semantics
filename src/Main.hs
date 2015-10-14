@@ -23,7 +23,7 @@ data Model =
 
 type Match = Element -> Element
     
-getType :: Element -> Typeemovddfdsfdsfdfdsfsdfsdfsdfsdfdsfdsfsddfs
+getType :: Element -> Type
 getType = snd
 
 getIdentifier :: Element -> Identifier
