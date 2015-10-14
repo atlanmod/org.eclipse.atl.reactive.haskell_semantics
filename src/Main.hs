@@ -1,7 +1,7 @@
 module Main where
 
---main::IO()
---main = putStrLn (show (transformation m0))
+main::IO()
+main = putStrLn (show (test))
 
 type Identifier = Int
               
@@ -102,39 +102,46 @@ getL lm e | e `elem` validElements lm = (get (targetModel lm) e,lm)
                         
 
 -- EXAMPLE
-    
-data Type = A | B | C | D deriving (Show,Eq)
 
+-- Metamodel
+data Type = A | B | C | D deriving (Show,Eq)
 data Reference = R deriving (Show,Eq)
 
+-- Source Model
 m0 :: Model
 m0 = Model [(1,A),(2,B)] [((1,A),R,(2,B))]
 
+-- Transformation
 myMatch :: Match
 myMatch (i,A) = (i,C)
 myMatch (i,B) = (i,D)
 
 myReferenceBinding :: ReferenceBinding
-myReferenceBinding m e = [ j | (j,R,k) <- getLinks m, k==e ]
+myReferenceBinding m e = [ j | (j,R,k) <- getLinks m, k==e ] -- R <- opposite of R
 
+-- Transformation launch configuration (Strict)
 m1 :: Model
 m1 = transformation myMatch myReferenceBinding m0
 
+-- Requests (Strict)
 dFS :: Model -> Element -> Elements
 dFS m e = e:concat (map (dFS m) (get m e))
 
 test1 = dFS m1 (2,D)
-     
+
+-- Transformation launch configuration (Lazy)
 lm1 :: ModelL
 lm1 = transformationL myMatch myReferenceBinding m0 (2,B)
 
+-- Requests (Lazy)
 dFSLs :: [Element] -> ModelL -> (Elements,ModelL)
 dFSLs []     lm = ([],lm)
 dFSLs (e:es) lm =
     let (es1,lm1) = getL lm e
         (es2,lm2) = dFSLs (es++es1) lm1
     in (e:es2,lm2)
-       
+
 test1L = fst (dFSLs [(2,D)] lm1)
 
+-- Test
 test = test1==test1L
