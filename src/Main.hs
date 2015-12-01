@@ -24,7 +24,7 @@ type Transformation = Relation
 
 -- image of the set
 navigate :: Relation -> Set Element -> Set Element
-navigate r es = nub (concat (map (navigate1 r) es))
+navigate r es = nub (concatMap (navigate1 r) es)
     where navigate1 :: Relation -> Element -> Set Element
           navigate1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
 
@@ -52,7 +52,7 @@ matchingPhase :: Transformation -> Model -> (Element,Set Element)
 matchingPhase t (root,elements,links) = (head (navigate t [root]),navigate t elements)
 
 applyPhase :: Transformation -> Model -> Set Element -> LinkS
-applyPhase t m es = concat (map (bindingApplication t m) es)
+applyPhase t m = concatMap (bindingApplication t m)
 
 transformationStrict :: Transformation -> Model -> Model
 transformationStrict t m =
@@ -179,3 +179,4 @@ test4 :: [Set Element]
 test4 = map fst (traversal ([root],mtui))
         where (root,_,_) = mtui
 
+-- REACTIVE
