@@ -1,3 +1,5 @@
+-- Abstract version written by Remi
+
 module Strict where
 
 data Type = A | B | C | D deriving (Show,Eq)

@@ -1,3 +1,5 @@
+-- Working draft
+
 import Data.Tuple
 import Data.List
     

@@ -1,6 +1,13 @@
+-- Concrete version written together
+
+module Main where
+
 import Data.Tuple
 import Data.List
-    
+
+main::IO()
+main = putStrLn (show (test2))
+
 type Set a = [a]
 
 --distinguish relation and function? and bijection?

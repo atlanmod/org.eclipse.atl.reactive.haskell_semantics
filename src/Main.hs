@@ -1,147 +1,161 @@
-module Main where
+-- Abstract (semantics-like) version
+
+import Data.Tuple
+import Data.List
 
 main::IO()
-main = putStrLn (show (test))
-
-type Identifier = Int
-              
-type Element = (Identifier,Type)
+main = putStrLn (show (test1 == test2))
 
 type Set a = [a]
-    
-type Elements = Set Element
 
-type Link = (Element,Reference,Element)
+--distinguish relation and function? and bijection?
 
-type Links = Set Link
+type Relation = Set (Element,Element)
+
+type Link = (Element,Element)
+
+type LinkS = Set Link
+
+-- (root, all elements, all links)
+type Model = (Element,Set Element,LinkS)
+
+type Transformation = Relation
+
+-- image of the set
+navigate :: Relation -> Set Element -> Set Element
+navigate r es = nub (concat (map (navigate1 r) es))
+    where navigate1 :: Relation -> Element -> Set Element
+          navigate1 r e = [ e2 | (e1,e2) <- r, e1==e ]
+
+-- we resolve every time because we don't compute primitive attributes and elements are created by different rules
+-- we compute the full binding (all the links)
+bindingApplication :: Transformation -> Model -> Element -> LinkS
+bindingApplication t (root,elements,links) targetReferenceSource =
+    targetReferenceSource `cross` ((navigate t) . (inverse links) . (inverse t)) [targetReferenceSource]
+
+inverse :: Relation -> Set Element -> Set Element
+inverse = navigate . (map swap)
+
+fixPoint :: Eq a => (a -> a) -> a -> [a]
+fixPoint f a | f a == a  = [a]
+             | otherwise = a:fixPoint f (f a)
+
+cross :: Element -> Set Element -> Relation
+cross e1 es2 = [ (e1,e2) | e2 <- es2 ]
 
 -- STRICT
-    
-data Model =
-    Model { getElements :: Elements
-          , getLinks    :: Links } deriving (Show,Eq) 
 
-type Match = Element -> Element
-    
-getType :: Element -> Type
-getType = snd
+-- model strict transformation
+-- it obtains the transformed root and all transformed elements
+matchingPhase :: Transformation -> Model -> (Element,Set Element)
+matchingPhase t (root,elements,links) = (head (navigate t [root]),navigate t elements)
 
-getIdentifier :: Element -> Identifier
-getIdentifier = fst
-         
-matchingPhase :: Match -> Model -> Elements
-matchingPhase mf = (map mf) . getElements
+applyPhase :: Transformation -> Model -> Set Element -> LinkS
+applyPhase t m es = concat (map (bindingApplication t m) es)
 
-applyPhase :: ReferenceBinding -> Model -> Elements -> Links
-applyPhase rB m es = concat (map (bindingApplication rB m es) es)
+transformationStrict :: Transformation -> Model -> Model
+transformationStrict t m =
+    let (targetRoot,targetElements) = matchingPhase t m
+        targetLinks = applyPhase t m targetElements
+    in (targetRoot,targetElements,targetLinks)
 
-bindingApplication :: ReferenceBinding -> Model -> Elements -> Element -> Links
-bindingApplication rB m es targetReferenceSource =
-    let sourceElement = traceLinkTraversal m targetReferenceSource
-        sourceReferenceTargets = rB m sourceElement
-        targetReferenceTargets = concat (map (traceLinkResolution es) sourceReferenceTargets)
-    in map (\tRT -> (targetReferenceSource,R,tRT)) targetReferenceTargets
+-- call a 'get' (i.e. navigate) on all the links outgoing from all the elements in the set
+get :: (Set Element,Model) -> (Set Element,Model)
+get (es,m@(root,elements,links)) = (navigate links es,m)
 
-type ReferenceBinding = Model -> Element -> Elements 
-                                
-traceLinkTraversal :: Model -> Element -> Element
-traceLinkTraversal m (i,_) = eSource
-    where [eSource] = filter ((==i) . getIdentifier) (getElements m) 
+-- LAZY
 
-traceLinkResolution :: Elements -> Element -> Elements
-traceLinkResolution es (i,_) = filter ((==i) . getIdentifier) es
+type ModelL = (Model,Transformation,Model)
 
-transformation :: Match -> ReferenceBinding -> Model -> Model
-transformation mf rf m =
-    let es = matchingPhase mf m
-        ls = applyPhase rf m es
-    in Model es ls       
+initialize :: Transformation -> Model -> ModelL
+initialize t m = (m,t,(rootT,[],[]))
+     where (root,_,_) = m
+           [rootT] = navigate t [root]
 
-get :: Model -> Element -> Elements
-get m eS = [ eT | (eS',_,eT) <- getLinks m, eS'==eS]
+-- call a 'get' (i.e. navigate) lazily on all the links outgoing from one element, by computing the element if necessary
+get1L :: ModelL -> Element -> (Set Element, ModelL)
+get1L mL@(mS,t,mT@(rootT,elementsT,linksT)) e | e `elem` elementsT = (fst (get ([e],mT)),mL)
+                                              | otherwise
+    = let ls = bindingApplication t mS e
+          mT1 = (rootT,e:elementsT,ls++linksT)
+          mL2 = (mS,t,mT1)
+      in (fst (get ([e],mT1)),mL2)
 
-
--- LAZY STUFF
-       
-data ModelL = ModelL {
-      sourceModel :: Model
-    , matchFunction :: Match
-    , referenceBindingFunction :: ReferenceBinding
-    , validElements :: Elements
-    , targetModel :: Model
-    } 
-
-transformationL :: Match -> ReferenceBinding -> Model -> Element -> ModelL
-transformationL mf rB m sourceOfRoot = ModelL m mf rB [] (Model [targetRoot] [])
-    where targetRoot = mf sourceOfRoot
-                   
-addValidElements :: Element -> ModelL -> ModelL
-addValidElements e lm = lm { validElements = e:validElements lm } 
-
-bindingApplicationL :: ModelL -> Element -> (Elements,Links)
-bindingApplicationL lm targetReferenceSource =
-    let sourceElement = traceLinkTraversal (sourceModel lm) targetReferenceSource
-        sourceReferenceTargets = (referenceBindingFunction lm) (sourceModel lm) sourceElement
-        --targetReferenceTargets = map (matchFunction lm) sourceReferenceTargets
-        targetReferenceTargets = map (matchFunction' lm) sourceReferenceTargets
-    in (targetReferenceTargets,map (\tRT -> (targetReferenceSource,R,tRT)) targetReferenceTargets)
-
-matchFunction' :: ModelL -> Match
-matchFunction' lm e | null targetElement = matchFunction lm e
-                    | otherwise = head targetElement
-                    where targetElement = traceLinkResolution (getElements (targetModel lm)) e                                   
-       
-getL :: ModelL -> Element -> (Elements, ModelL)
-getL lm e | e `elem` validElements lm = (get (targetModel lm) e,lm)
-          | otherwise
-    = let (es,ls) = bindingApplicationL lm e
-          tm1 = Model (es++getElements tm) (ls++getLinks tm) where tm = targetModel lm
-          lm1 = lm { targetModel = tm1 }
-          lm2 = addValidElements e lm1
-      in (get (targetModel lm2) e,lm2) -- aka (tm1,lm2)
-                        
+-- get1L on a set of elements
+getL :: (Set Element,ModelL) -> (Set Element, ModelL)
+getL (  [],mL0) = ([],mL0)
+getL (e:es,mL0) = let (est1,mL1) = get1L mL0 e
+                      (est2,mL2) = getL (es,mL1)
+                  in (est1 `union` est2,mL2)
 
 -- EXAMPLE
 
 -- Metamodel
-data Type = A | B | C | D deriving (Show,Eq)
-data Reference = R deriving (Show,Eq)
+
+data Element = A | B | C | D | E | F deriving (Show,Eq) -- distinguish source and target element types?
 
 -- Source Model
+
 m0 :: Model
-m0 = Model [(1,A),(2,B)] [((1,A),R,(2,B))]
+m0 = (B,[A,B],[(A,B)])
 
 -- Transformation
-myMatch :: Match
-myMatch (i,A) = (i,C)
-myMatch (i,B) = (i,D)
 
-myReferenceBinding :: ReferenceBinding
-myReferenceBinding m e = [ j | (j,R,k) <- getLinks m, k==e ] -- R <- opposite of R
+t1 :: Transformation
+t1 = [(A,C),(B,D)]
 
 -- Transformation launch configuration (Strict)
 m1 :: Model
-m1 = transformation myMatch myReferenceBinding m0
+m1 = transformationStrict t1 m0
 
 -- Requests (Strict)
-dFS :: Model -> Element -> Elements
-dFS m e = e:concat (map (dFS m) (get m e))
+traversal :: (Set Element,Model) -> [(Set Element,Model)]
+traversal em = fixPoint get em
 
-test1 = dFS m1 (2,D)
+-- Source model navigation
+test0 = traversal ([root],m0)
+        where (root,_,_) = m0
 
--- Transformation launch configuration (Lazy)
-lm1 :: ModelL
-lm1 = transformationL myMatch myReferenceBinding m0 (2,B)
+-- Strictly transformed target model
+test1 = map fst (traversal ([root],m1))
+        where (root,_,_) = m1
 
--- Requests (Lazy)
-dFSLs :: [Element] -> ModelL -> (Elements,ModelL)
-dFSLs []     lm = ([],lm)
-dFSLs (e:es) lm =
-    let (es1,lm1) = getL lm e
-        (es2,lm2) = dFSLs (es++es1) lm1
-    in (e:es2,lm2)
 
-test1L = fst (dFSLs [(2,D)] lm1)
+-- Transformation launch configuration (lazy)
+m2 :: ModelL
+m2 = initialize t1 m0
 
--- Test
-test = test1==test1L
+traversalL :: (Set Element,ModelL) -> [(Set Element,ModelL)]
+traversalL em = fixPoint getL em
+
+-- Lazily transformed target model
+test2 = map fst (traversalL ([rootT],m2))
+        where (_,_,(rootT,_,_)) = m2
+
+addElement :: Element -> (Model, Transformation, Model) -> (Model, Transformation, Model)
+addElement e (ms, t, mt) =
+        let [ne] = navigate t [e]
+        in (addElementS e ms, t, addElementS ne mt)
+
+addLink :: Link -> (Model, Transformation, Model) -> (Model, Transformation, Model)
+addLink (from, to) (ms, t, mt) =
+        let ls = bindingApplication t ms (head (navigate t [to]))
+        in (addLinkS (from, to) ms, t, foldr addLinkS mt ls)
+
+addElementS :: Element -> Model -> Model
+addElementS e (rootS,elementsS,linksS) = (rootS,e:elementsS,linksS)
+
+addLinkS :: Link -> Model -> Model
+addLinkS l (rootS,elementsS,linksS) = (rootS,elementsS,l:linksS)
+
+t2 :: Transformation
+t2 = t1 ++ [(E, F)]
+
+mu :: Model
+mu = addLinkS (E, A) (addElementS E m0)
+
+mtu :: Model
+mtu = transformationStrict t2 mu
+
+imu :: (Model, Transformation, Model)
+imu = addLink (E,A) (addElement E (m0, t2, m1))

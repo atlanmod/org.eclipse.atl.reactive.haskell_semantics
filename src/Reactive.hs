@@ -1,3 +1,5 @@
+-- Draft to investigate reactiveness
+
 module Reactive where
 
 data Type = A | B | C | D deriving (Show,Eq)
@@ -5,11 +7,11 @@ data Type = A | B | C | D deriving (Show,Eq)
 data Reference = R | R' deriving (Show,Eq)
 
 type Identifier = Int
-              
+
 type Element = (Identifier,Type)
 
 type Set a = [a]
-    
+
 type Elements = Set Element
 
 type Link = (Element,Reference,Element)
@@ -44,11 +46,11 @@ bindingApplication m es e | typeOf e == D = let b = traceLinkTraversal m e
                                             in [(e,R',c)]
 bindingApplication m _  _     = []
 
-referenceBinding :: Model -> Element -> Element 
+referenceBinding :: Model -> Element -> Element
 referenceBinding m e = head [ j | (j,R,k) <- snd m, k==e ]
 
 traceLinkTraversal :: Model -> Element -> Element
-traceLinkTraversal m (i,_) = head (filter ((==i) . fst) (fst m)) 
+traceLinkTraversal m (i,_) = head (filter ((==i) . fst) (fst m))
 
 traceLinkResolution :: Elements -> Element -> Element
 traceLinkResolution es (i,_) = head (filter ((==i) . fst) es)
@@ -64,7 +66,6 @@ transformation m =
 --referenceBindingApplication model r e =
 --   let elementsOfTypeA = head (filter ((==A) . snd) (fst model))
 --       linksToTheElementofTypeA = filter (\(_,r,i) -> fst elementsOfTypeA == i && r==R) (snd model)
---       in () 
----    let 
+--       in ()
+---    let
 --applyPhase ::
-    
