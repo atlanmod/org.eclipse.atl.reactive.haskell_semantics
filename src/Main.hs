@@ -5,7 +5,7 @@ import Data.Tuple
 import Data.List
 
 main::IO()
-main = putStrLn (show (test1 == test2))
+main = print (test3 == test4)
 
 type Set a = [a]
 
@@ -26,16 +26,16 @@ type Transformation = Relation
 navigate :: Relation -> Set Element -> Set Element
 navigate r es = nub (concat (map (navigate1 r) es))
     where navigate1 :: Relation -> Element -> Set Element
-          navigate1 r e = [ e2 | (e1,e2) <- r, e1==e ]
+          navigate1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
 
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
 bindingApplication :: Transformation -> Model -> Element -> LinkS
 bindingApplication t (root,elements,links) targetReferenceSource =
-    targetReferenceSource `cross` ((navigate t) . (inverse links) . (inverse t)) [targetReferenceSource]
+    targetReferenceSource `cross` (navigate t . inverse links . inverse t) [targetReferenceSource]
 
 inverse :: Relation -> Set Element -> Set Element
-inverse = navigate . (map swap)
+inverse = navigate . map swap
 
 fixPoint :: Eq a => (a -> a) -> a -> [a]
 fixPoint f a | f a == a  = [a]
@@ -111,13 +111,15 @@ m1 = transformationStrict t1 m0
 
 -- Requests (Strict)
 traversal :: (Set Element,Model) -> [(Set Element,Model)]
-traversal em = fixPoint get em
+traversal = fixPoint get
 
 -- Source model navigation
+test0 :: [(Set Element, Model)]
 test0 = traversal ([root],m0)
         where (root,_,_) = m0
 
 -- Strictly transformed target model
+test1 :: [Set Element]
 test1 = map fst (traversal ([root],m1))
         where (root,_,_) = m1
 
@@ -127,22 +129,28 @@ m2 :: ModelL
 m2 = initialize t1 m0
 
 traversalL :: (Set Element,ModelL) -> [(Set Element,ModelL)]
-traversalL em = fixPoint getL em
+traversalL = fixPoint getL
 
 -- Lazily transformed target model
+test2 :: [Set Element]
 test2 = map fst (traversalL ([rootT],m2))
         where (_,_,(rootT,_,_)) = m2
 
-addElement :: Element -> (Model, Transformation, Model) -> (Model, Transformation, Model)
-addElement e (ms, t, mt) =
+-- INCREMENTAL
+-- Adds element/link to Source Model (and updates the corresponding target model)
+addElementU :: Element -> (Model, Transformation, Model) -> (Model, Transformation, Model)
+addElementU e (ms, t, mt) =
         let [ne] = navigate t [e]
         in (addElementS e ms, t, addElementS ne mt)
 
-addLink :: Link -> (Model, Transformation, Model) -> (Model, Transformation, Model)
-addLink (from, to) (ms, t, mt) =
-        let ls = bindingApplication t ms (head (navigate t [to]))
-        in (addLinkS (from, to) ms, t, foldr addLinkS mt ls)
+-- this works only in our case where we just invert links
+addLinkU :: Link -> (Model, Transformation, Model) -> (Model, Transformation, Model)
+addLinkU (from, to) (ms, t, mt) =
+        let msu = addLinkS (from, to) ms
+            ls = bindingApplication t msu (head (navigate t [to]))
+        in (msu, t, foldr addLinkS mt ls)
 
+-- Adds (strictly) element/link to Model
 addElementS :: Element -> Model -> Model
 addElementS e (rootS,elementsS,linksS) = (rootS,e:elementsS,linksS)
 
@@ -155,8 +163,19 @@ t2 = t1 ++ [(E, F)]
 mu :: Model
 mu = addLinkS (E, A) (addElementS E m0)
 
+-- result of the strict transformation
 mtu :: Model
 mtu = transformationStrict t2 mu
 
-imu :: (Model, Transformation, Model)
-imu = addLink (E,A) (addElement E (m0, t2, m1))
+test3 :: [Set Element]
+test3 = map fst (traversal ([root],mtu))
+        where (root,_,_) = mtu
+
+mtui :: Model
+mtui = mtui1
+        where (_,_,mtui1) = addLinkU (E,A) (addElementU E (m0, t2, m1))
+
+test4 :: [Set Element]
+test4 = map fst (traversal ([root],mtui))
+        where (root,_,_) = mtui
+
