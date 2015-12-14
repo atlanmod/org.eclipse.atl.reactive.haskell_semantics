@@ -1,41 +1,38 @@
-module Main where
 -- Abstract (semantics-like) version
+module Main where
 
 import Data.Tuple
 import Data.List
 
-main::IO()
-main = print (test3 == test4)
-
 type Set a = [a]
 
 --distinguish relation and function? and bijection?
-
 type Relation = Set (Element,Element)
 
 type Link = (Element,Element)
 
-type LinkS = Set Link
+type LinkSet = Set Link
 
 -- (root, all elements, all links)
-type Model = (Element,Set Element,LinkS)
+type Model = (Element,Set Element,LinkSet)
 
 type Transformation = Relation
 
 -- image of the set
-navigate :: Relation -> Set Element -> Set Element
-navigate r es = nub (concatMap (navigate1 r) es)
+image :: Relation -> Set Element -> Set Element
+image r es = nub (concatMap (navigate1 r) es)
     where navigate1 :: Relation -> Element -> Set Element
           navigate1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
 
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
-bindingApplication :: Transformation -> Model -> Element -> LinkS
-bindingApplication t (_,_,links) targetReferenceSource =
-    targetReferenceSource `cross` (navigate t . inverse links . inverse t) [targetReferenceSource]
+-- transformation -> transformationSourceModel -> targetLinkSource -> targetLinks
+bindingApplication :: Transformation -> Model -> Element -> LinkSet
+bindingApplication t (_,_,links) targetLinkSource =
+    targetLinkSource `cross` (image t . inverseImage links . inverseImage t) [targetLinkSource]
 
-inverse :: Relation -> Set Element -> Set Element
-inverse = navigate . map swap
+inverseImage :: Relation -> Set Element -> Set Element
+inverseImage = image . map swap
 
 fixPoint :: Eq a => (a -> a) -> a -> [a]
 fixPoint f a | f a == a  = [a]
@@ -49,9 +46,9 @@ cross e1 es2 = [ (e1,e2) | e2 <- es2 ]
 -- model strict transformation
 -- it obtains the transformed root and all transformed elements
 matchingPhase :: Transformation -> Model -> (Element,Set Element)
-matchingPhase t (root,elements,_) = (head (navigate t [root]),navigate t elements)
+matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
 
-applyPhase :: Transformation -> Model -> Set Element -> LinkS
+applyPhase :: Transformation -> Model -> Set Element -> LinkSet
 applyPhase t m = concatMap (bindingApplication t m)
 
 transformationStrict :: Transformation -> Model -> Model
@@ -62,7 +59,7 @@ transformationStrict t m =
 
 -- call a 'get' (i.e. navigate) on all the links outgoing from all the elements in the set
 get :: (Set Element,Model) -> (Set Element,Model)
-get (es,m@(_,_,links)) = (navigate links es,m)
+get (es,m@(_,_,links)) = (image links es,m)
 
 -- LAZY
 
@@ -71,7 +68,7 @@ type ModelL = (Model,Transformation,Model)
 initialize :: Transformation -> Model -> ModelL
 initialize t m = (m,t,(rootT,[],[]))
      where (root,_,_) = m
-           [rootT] = navigate t [root]
+           [rootT] = image t [root]
 
 -- call a 'get' (i.e. navigate) lazily on all the links outgoing from one element, by computing the element if necessary
 get1L :: ModelL -> Element -> (Set Element, ModelL)
@@ -140,14 +137,14 @@ test2 = map fst (traversalL ([rootT],m2))
 -- Adds element/link to Source Model (and updates the corresponding target model)
 addElementU :: Element -> (Model, Transformation, Model) -> (Model, Transformation, Model)
 addElementU e (ms, t, mt) =
-        let [ne] = navigate t [e]
+        let [ne] = image t [e]
         in (addElementS e ms, t, addElementS ne mt)
 
 -- this works only in our case where we just invert links
 addLinkU :: Link -> (Model, Transformation, Model) -> (Model, Transformation, Model)
 addLinkU (from, to) (ms, t, mt) =
         let msu = addLinkS (from, to) ms
-            ls = bindingApplication t msu (head (navigate t [to]))
+            ls = bindingApplication t msu (head (image t [to]))
         in (msu, t, foldr addLinkS mt ls)
 
 -- Adds (strictly) element/link to Model
@@ -180,3 +177,9 @@ test4 = map fst (traversal ([root],mtui))
         where (root,_,_) = mtui
 
 -- REACTIVE
+
+
+
+
+main::IO()
+main = print (test3 == test4)
