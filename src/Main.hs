@@ -4,10 +4,29 @@ module Main where
 import Data.Tuple
 import Data.List
 
+-- MATHS
+
 type Set a = [a]
 
 --distinguish relation and function? and bijection?
 type Relation = Set (Element,Element)
+
+image :: Relation -> Set Element -> Set Element
+image r es = nub (concatMap (image1 r) es)
+    where image1 :: Relation -> Element -> Set Element
+          image1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
+
+inverseImage :: Relation -> Set Element -> Set Element
+inverseImage = image . map swap
+
+crossProduct :: Element -> Set Element -> Relation
+crossProduct e1 es2 = [ (e1,e2) | e2 <- es2 ]
+
+fixedPoint :: Eq a => (a -> a) -> a -> [a]
+fixedPoint f a | f a == a  = [a]
+             | otherwise = a:fixedPoint f (f a)
+
+-- MODELS
 
 type Link = (Element,Element)
 
@@ -18,28 +37,12 @@ type Model = (Element,Set Element,LinkSet)
 
 type Transformation = Relation
 
--- image of the set
-image :: Relation -> Set Element -> Set Element
-image r es = nub (concatMap (navigate1 r) es)
-    where navigate1 :: Relation -> Element -> Set Element
-          navigate1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
-
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
 -- transformation -> transformationSourceModel -> targetLinkSource -> targetLinks
 bindingApplication :: Transformation -> Model -> Element -> LinkSet
 bindingApplication t (_,_,links) targetLinkSource =
-    targetLinkSource `cross` (image t . inverseImage links . inverseImage t) [targetLinkSource]
-
-inverseImage :: Relation -> Set Element -> Set Element
-inverseImage = image . map swap
-
-fixPoint :: Eq a => (a -> a) -> a -> [a]
-fixPoint f a | f a == a  = [a]
-             | otherwise = a:fixPoint f (f a)
-
-cross :: Element -> Set Element -> Relation
-cross e1 es2 = [ (e1,e2) | e2 <- es2 ]
+    targetLinkSource `crossProduct` (image t . inverseImage links . inverseImage t) [targetLinkSource]
 
 -- STRICT
 
@@ -108,7 +111,7 @@ m1 = transformationStrict t1 m0
 
 -- Requests (Strict)
 traversal :: (Set Element,Model) -> [(Set Element,Model)]
-traversal = fixPoint get
+traversal = fixedPoint get
 
 -- Source model navigation
 test0 :: [(Set Element, Model)]
@@ -126,7 +129,7 @@ m2 :: ModelL
 m2 = initialize t1 m0
 
 traversalL :: (Set Element,ModelL) -> [(Set Element,ModelL)]
-traversalL = fixPoint getL
+traversalL = fixedPoint getL
 
 -- Lazily transformed target model
 test2 :: [Set Element]
