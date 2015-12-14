@@ -31,7 +31,7 @@ navigate r es = nub (concatMap (navigate1 r) es)
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
 bindingApplication :: Transformation -> Model -> Element -> LinkS
-bindingApplication t (root,elements,links) targetReferenceSource =
+bindingApplication t (_,_,links) targetReferenceSource =
     targetReferenceSource `cross` (navigate t . inverse links . inverse t) [targetReferenceSource]
 
 inverse :: Relation -> Set Element -> Set Element
@@ -49,7 +49,7 @@ cross e1 es2 = [ (e1,e2) | e2 <- es2 ]
 -- model strict transformation
 -- it obtains the transformed root and all transformed elements
 matchingPhase :: Transformation -> Model -> (Element,Set Element)
-matchingPhase t (root,elements,links) = (head (navigate t [root]),navigate t elements)
+matchingPhase t (root,elements,_) = (head (navigate t [root]),navigate t elements)
 
 applyPhase :: Transformation -> Model -> Set Element -> LinkS
 applyPhase t m = concatMap (bindingApplication t m)
@@ -62,7 +62,7 @@ transformationStrict t m =
 
 -- call a 'get' (i.e. navigate) on all the links outgoing from all the elements in the set
 get :: (Set Element,Model) -> (Set Element,Model)
-get (es,m@(root,elements,links)) = (navigate links es,m)
+get (es,m@(_,_,links)) = (navigate links es,m)
 
 -- LAZY
 
