@@ -48,6 +48,7 @@ type Transformation = Relation
 
 -- sourceModel -> matchedElements -> resultingSourceElements
 computeBinding :: Model -> SetOf Element -> SetOf Element
+computeBindingTraces :: Model -> SetOf Element -> SetOf Element
 
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
@@ -140,7 +141,7 @@ addElementR e (ms, t, mt) =
 addLinkR :: Link -> ModelL -> ModelL
 addLinkR (from, to) (ms, t, mt) =
     let msu = addLinkS (from, to) ms
-    in (msu, t, )
+    in undefined -- (msu, t, )
 
 -- isInvolvedIn :: Element ->
 
@@ -177,7 +178,21 @@ m0 = (B,[A,B],[(A,B)])
 t1 :: Transformation
 t1 = [(A,C),(B,D)]
 
+-- computeBinding (_,_,links) = inverseImage links
+
 computeBinding (_,_,links) = image links
+computeBindingTraces (_,_,links) elements = nub (elements ++ image links elements)
+
+traces :: Transformation -> Element -> SetOf Element
+traces t e = image t [e]
+
+-- p1 es et = image t (image links es) == image tlinks et
+
+-- traces :: Model -> Transformation -> Element -> SetOf Element
+--traces m t e = [ | let (_,es,_) = transformationStrict t m , et <- es ] ...
+
+-- computeBinding2 (m,elements,links) = (leaves(m, elements, links), treeElements(m, elements, links))
+
 
 -- Transformation launch configuration (Strict)
 m1 :: Model
