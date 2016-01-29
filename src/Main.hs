@@ -15,6 +15,7 @@ module Main where
 import Data.Tuple
 import Data.List
 import Debug.Trace
+import Test.QuickCheck
 
 -- MATHS
 type SetOf a = [a]
@@ -106,7 +107,7 @@ instance TransformationI TransformationIncremental where
                                    let msu = (root,es,l:links)
                                        ls = foldr union [] $ map (bindingApplication t msu) (image t (computeReverseBinding msu l))
                                    in TransformationIncremental (msu, t, (root',es',ls++links'))
-    apply (TransformationIncremental (m, t, _))  =
+    apply (TransformationIncremental (m, t, _)) =
             let (targetRoot,targetElements) = matchingPhase t m
                 targetLinks = applyPhase t m targetElements
             in TransformationIncremental (m, t, (targetRoot,targetElements,targetLinks))
@@ -141,9 +142,10 @@ bindingApplication t m@(_,_,links) targetLinkSource = -- trace (show t ++ show m
 
 -- Metamodel
 
-data Element = A | B | C | D | E | F deriving (Show,Eq) -- distinguish source and target element types?
+data Element = A | B | C | D | E | F deriving (Show,Eq,Enum) -- distinguish source and target element types?
 
-
+instance Arbitrary Element where
+    arbitrary = elements [A .. F]
 
 ts0 :: TransformationStrict
 ts0 = TransformationStrict ((A,[A,B],[(A,B)]), tr, undefined)
@@ -153,7 +155,6 @@ ti0 :: TransformationIncremental
 ti0 = TransformationIncremental ((A,[A,B],[(A,B)]), tr, undefined)
 tr0 :: TransformationReactive
 tr0 = TransformationReactive ((A,[A,B],[(A,B)]), tr, undefined)
-
 
 -- sourceModel -> matchedElements -> resultingSourceElements
 computeBinding :: Model -> SetOf Element -> SetOf Element
@@ -199,3 +200,25 @@ main = do
     print $ show $ fst $ getN 3 mLazy'
     print $ show $ fst $ getN 3 mIncremental'
     print $ show $ fst $ getN 3 mReactive'
+
+    test
+
+--prop :: [Int] -> [Int] -> Bool
+--prop xs ys = length xs + length ys == length (xs++ys)
+--test1 = verboseCheck prop
+
+test = verboseCheckWith stdArgs { maxSuccess = 50000 } assertion1
+
+--assertion t m0 = length (nub [fst $ getN 3 $ mStrict m0, fst $ getN 3 $ mLazy m0, fst $ getN 3 $ mIncremental m0, fst $ getN 3 $ mReactive m0]) == 1
+        --    && length (nub [fst $ getN 3 mStrict', fst $ getN 3 mLazy', fst $ getN 3 mIncremental', fst $ getN 3 mReactive']) == 1
+
+-- assertion1 :: Model -> Transformation -> Bool
+assertion1 mS t = valid mS t ==> length (nub [ fst $ getN 3 $ apply $ TransformationStrict (mS,t,undefined),
+                                fst $ getN 3 $ apply $ TransformationLazy (mS,t,undefined),
+                                fst $ getN 3 $ apply $ TransformationIncremental (mS,t,undefined),
+                                fst $ getN 3 $ apply $ TransformationReactive (mS,t,undefined)]) == 1
+
+valid :: Model -> Transformation -> Bool
+valid (root, es, links) t = elem root es && length es == length (nub es) && all (`elem` es) (map fst links) && all (`elem` es) (map snd links) &&
+                            all (`notElem` es) (map snd t) && not (null t) && root `elem` (map fst t)
+
