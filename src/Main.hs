@@ -102,9 +102,9 @@ instance TransformationI TransformationIncremental where
     addElementToSource e (TransformationIncremental ((root,es,links), t, (root',es',links'))) =
                                    let [ne] = image t [e]
                                    in TransformationIncremental ((root,e:es,links), t, (root',ne:es',links'))
-    addLinkToSource (from, to) (TransformationIncremental ((root,es,links), t, (root',es',links'))) =
-                                   let msu = (root,es,(from, to):links)
-                                       ls = bindingApplication t msu (head (image t [from]))
+    addLinkToSource l (TransformationIncremental ((root,es,links), t, (root',es',links'))) =
+                                   let msu = (root,es,l:links)
+                                       ls = foldr union [] $ map (bindingApplication t msu) (image t (computeReverseBinding msu l))
                                    in TransformationIncremental (msu, t, (root',es',ls++links'))
     apply (TransformationIncremental (m, t, _))  =
             let (targetRoot,targetElements) = matchingPhase t m
@@ -117,14 +117,14 @@ instance TransformationI TransformationReactive where
     getRootFromTarget(TransformationReactive (_,_,(rootT,_,_))) = rootT
     getFromTarget mL@(TransformationReactive (mS,t,mT@(rootT,elementsT,linksT))) e | e `elem` elementsT = (image linksT [e],mL)
                                                                                    | otherwise
-                 = let ls = bindingApplication t mS e
+                 = let ls = bindingApplication t mS e -- TODO: add also elements
                        mT1 = (rootT,e:elementsT,ls++linksT)
                    in (image (ls++linksT) [e],TransformationReactive (mS, t, mT1))
     addElementToSource e (TransformationReactive ((root,es,links), t, (root',es',links'))) =
                                    TransformationReactive ((root,e:es,links), t, (root',es',links'))
-    addLinkToSource (from, to) (TransformationReactive ((root,es,links), t, (root',es',links'))) =
-                                   let msu = (root,es,(from, to):links)
-                                       [ne] = image t [from]
+    addLinkToSource l (TransformationReactive ((root,es,links), t, (root',es',links'))) =
+                                   let msu = (root,es,l:links)
+                                       [ne] = image t (computeReverseBinding msu l)
                                    in TransformationReactive (msu, t, (root',delete ne es',links'))
     apply (TransformationReactive (m,t,_)) = TransformationReactive (initialize t m)
 
@@ -143,8 +143,7 @@ bindingApplication t m@(_,_,links) targetLinkSource = -- trace (show t ++ show m
 
 data Element = A | B | C | D | E | F deriving (Show,Eq) -- distinguish source and target element types?
 
-tr :: Transformation
-tr = [(A,C),(B,D),(E,F)]
+
 
 ts0 :: TransformationStrict
 ts0 = TransformationStrict ((A,[A,B],[(A,B)]), tr, undefined)
@@ -155,18 +154,18 @@ ti0 = TransformationIncremental ((A,[A,B],[(A,B)]), tr, undefined)
 tr0 :: TransformationReactive
 tr0 = TransformationReactive ((A,[A,B],[(A,B)]), tr, undefined)
 
--- Transformation
 
 -- sourceModel -> matchedElements -> resultingSourceElements
 computeBinding :: Model -> SetOf Element -> SetOf Element
-computeBindingTraces :: Model -> SetOf Element -> SetOf Element
+computeReverseBinding :: Model -> Link -> SetOf Element
 
+-- Transformation
+
+tr :: Transformation
+tr = [(A,C),(B,D),(E,F)]
 -- computeBinding (_,_,links) = inverseImage links
 computeBinding (_,_,links) = image links
-
-computeBindingTraces (_,_,links) elements = nub (elements ++ image links elements)
-traces :: Transformation -> Element -> SetOf Element
-traces t e = image t [e]
+computeReverseBinding (_,_,_) (from, to) = [from]
 
 updateSource :: TransformationI m => m -> m
 updateSource ts = addLinkToSource (A, E) (addElementToSource E ts)
