@@ -60,6 +60,7 @@ getN n m = let (es', m') = getN (n-1) m
            in (union es' es'', m'')
 
 newtype TransformationStrict = TransformationStrict (Model,Transformation,Model) deriving Show
+
 instance TransformationI TransformationStrict where
     getRootFromTarget (TransformationStrict (_,_,(root,_,_))) = root
     getFromTarget m@(TransformationStrict (_,_,(_,_,links))) e = (image links [e],m)
@@ -144,9 +145,6 @@ bindingApplication t m@(_,_,links) targetLinkSource = -- trace (show t ++ show m
 
 data Element = A | B | C | D | E | F deriving (Show,Eq,Enum) -- distinguish source and target element types?
 
-instance Arbitrary Element where
-    arbitrary = elements [A .. F]
-
 ts0 :: TransformationStrict
 ts0 = TransformationStrict ((A,[A,B],[(A,B)]), tr, undefined)
 tl0 :: TransformationLazy
@@ -201,24 +199,69 @@ main = do
     print $ show $ fst $ getN 3 mIncremental'
     print $ show $ fst $ getN 3 mReactive'
 
-    test
+    test1
 
---prop :: [Int] -> [Int] -> Bool
---prop xs ys = length xs + length ys == length (xs++ys)
---test1 = verboseCheck prop
+-- Quicheck generation of source models and transformations
 
-test = verboseCheckWith stdArgs { maxSuccess = 50000 } assertion1
+-- all possible subsets
+subSet :: [a] -> [[a]]
+subSet []     = [[]]
+subSet (e:es) = ess ++ map (e:) ess
+    where ess = subSet es
 
---assertion t m0 = length (nub [fst $ getN 3 $ mStrict m0, fst $ getN 3 $ mLazy m0, fst $ getN 3 $ mIncremental m0, fst $ getN 3 $ mReactive m0]) == 1
-        --    && length (nub [fst $ getN 3 mStrict', fst $ getN 3 mLazy', fst $ getN 3 mIncremental', fst $ getN 3 mReactive']) == 1
+-- split into two non empty
+split :: [a] -> [([a],[a])]
+split [x1,x2] = [([x1],[x2])]
+split (x:xs)  = ([x],xs):map (\(s,t) -> (x:s,t)) xss
+    where xss = split xs
 
--- assertion1 :: Model -> Transformation -> Bool
-assertion1 mS t = valid mS t ==> length (nub [ fst $ getN 3 $ apply $ TransformationStrict (mS,t,undefined),
-                                fst $ getN 3 $ apply $ TransformationLazy (mS,t,undefined),
-                                fst $ getN 3 $ apply $ TransformationIncremental (mS,t,undefined),
-                                fst $ getN 3 $ apply $ TransformationReactive (mS,t,undefined)]) == 1
+-- all combinations
+sourceAndTargetElements :: [([Element],[Element])]
+sourceAndTargetElements = concat $ map split $ filter (\es -> length es>1) $ subSet [A .. F]
 
+sourceAndTargetElementsGen :: Gen ([Element],[Element])
+sourceAndTargetElementsGen = elements sourceAndTargetElements
+
+-- total links
+allLinks :: [a] -> [(a,a)] 
+allLinks es = [ (from,to) | from <- es, to <- es ]
+              
+-- total transformation
+allTransfos :: [a] -> [a] -> [(a,a)]
+allTransfos eSource eTarget = [ (a,b) | a <- eSource, b <- eTarget ]
+
+
+newtype Config = Config { unConfig::(Model,Transformation) } deriving (Show,Eq)
+
+configs :: Gen Config
+configs = do
+  -- take a subset of at leat two elements and split it in two
+  (elementS,elementT) <- elements $ concat $ map split $ filter (\es -> length es>=2) $ subSet [A .. F]
+  -- a subset of all possible source links
+  linkS <- elements $ subSet $ allLinks elementS
+  let rootS = head elementS -- source root is always the first element
+      rootT = head elementT -- target root is always the first element
+  -- a subset of all possible transfo (does not include root mapping)
+  transfo <- elements $ subSet $ allTransfos (tail elementS) elementT
+  -- a configuration
+  return $ Config ((rootS,elementS,linkS),(rootS,rootT):transfo)
+
+instance Arbitrary Config where
+    arbitrary = configs
+
+assertion config =
+    let (mS,t) = unConfig config
+        c = (mS,t,undefined)
+    in --valid mS t ==>
+       length (nub [ fst $ getN 3 $ apply $ TransformationStrict c
+                   , fst $ getN 3 $ apply $ TransformationLazy c 
+                   , fst $ getN 3 $ apply $ TransformationIncremental c
+                   , fst $ getN 3 $ apply $ TransformationReactive c]) == 1
+
+test1 = verboseCheckWith stdArgs { maxSuccess = 10 } assertion
+test2 = verboseCheck assertion
+
+-- for debugging purpose only (generated source models and transformations are valid by construction)
 valid :: Model -> Transformation -> Bool
 valid (root, es, links) t = elem root es && length es == length (nub es) && all (`elem` es) (map fst links) && all (`elem` es) (map snd links) &&
                             all (`notElem` es) (map snd t) && not (null t) && root `elem` (map fst t)
-
