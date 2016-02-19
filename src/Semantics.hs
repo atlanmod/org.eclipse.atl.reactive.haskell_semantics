@@ -15,13 +15,30 @@ module Semantics where
 import Data.Tuple
 import Data.List
 
+-- # MODEL
+
+-- (root, all elements, all links)
+-- in lazy semantics (root, all elements with valid outgoing references, all links from valid elements)
+type Model = (Element,SetOf Element,SetOf Link)
+
 data Element = A | B | C | D | E | F deriving (Show,Eq,Enum) -- distinguish source and target element types?
 
--- MATHS
+type Link = (Element,Element)
+
 type SetOf a = [a]
 
+-- # TRANSFORMATION
+
+-- Transformation = (Relation, computeBinding, computeReverseBinding)
+type Transformation = (Relation, Model -> SetOf Element -> SetOf Element, Model -> Link -> SetOf Element)
 --distinguish relation and function? and bijection?
 type Relation = SetOf (Element,Element)
+
+image :: Transformation -> SetOf Element -> SetOf Element
+image (r, _, _) = imageR r
+
+inverseImage :: Transformation -> SetOf Element -> SetOf Element
+inverseImage (r, _, _) = inverseImageR r
 
 imageR :: Relation -> SetOf Element -> SetOf Element
 imageR r es = nub (concatMap (image1 r) es)
@@ -34,20 +51,7 @@ inverseImageR = imageR . map swap
 crossProductR :: Element -> SetOf Element -> Relation
 crossProductR e1 es2 = [ (e1,e2) | e2 <- es2 ]
 
--- Transformation = (Relation, computeBinding, computeReverseBinding)
-type Transformation = (Relation, Model -> SetOf Element -> SetOf Element, Model -> Link -> SetOf Element)
-
-image :: Transformation -> SetOf Element -> SetOf Element
-image (r, _, _) = imageR r
-
-inverseImage :: Transformation -> SetOf Element -> SetOf Element
-inverseImage (r, _, _) = inverseImageR r
-
-type Link = (Element,Element)
-
--- (root, all elements, all links)
--- in lazy semantics (root, all elements with valid outgoing references, all links from valid elements)
-type Model = (Element,SetOf Element,SetOf Link)
+-- # TRANSFORMATION SYSTEM
 
 class TransformationI m where  -- MONADIC (State) ?
     apply :: m -> m -- should be implicit in the constructor ?
