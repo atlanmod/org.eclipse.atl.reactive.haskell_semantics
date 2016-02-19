@@ -53,28 +53,29 @@ crossProductR e1 es2 = [ (e1,e2) | e2 <- es2 ]
 
 -- # TRANSFORMATION SYSTEM
 
-class TransformationI m where  -- MONADIC (State) ?
+class TransformationSystem m where  -- MONADIC (State) ?
     apply :: m -> m -- should be implicit in the constructor ?
     getFromTarget :: m -> Element -> (SetOf Element,m)
     getRootFromTarget :: m -> Element
     addElementToSource :: Element -> m -> m
     addLinkToSource :: Link -> m -> m
 
-getAllFromTarget :: TransformationI m => m -> SetOf Element -> (SetOf Element, m)
+getAllFromTarget :: TransformationSystem m => m -> SetOf Element -> (SetOf Element, m)
 getAllFromTarget m0 [] = ([],m0)
 getAllFromTarget m0 (e:es) = let (est1,m1) = getFromTarget m0 e
                                  (est2,m2) = getAllFromTarget m1 es
                              in (est1 `union` est2,m2)
 
-getNFromTarget :: TransformationI m => Int -> m -> (SetOf Element, m)
+getNFromTarget :: TransformationSystem m => Int -> m -> (SetOf Element, m)
 getNFromTarget 0 m = ([getRootFromTarget m], m)
 getNFromTarget n m = let (es', m') = getNFromTarget (n-1) m
                          (es'', m'') = getAllFromTarget m' es'
                      in (union es' es'', m'')
 
-newtype TransformationStrict = TransformationStrict (Model,Transformation,Model)
+-- # STRICT TRANSFORMATION SYSTEM
 
-instance TransformationI TransformationStrict where
+newtype TransformationStrict = TransformationStrict (Model,Transformation,Model)
+instance TransformationSystem TransformationStrict where
     getRootFromTarget (TransformationStrict (_,_,(root,_,_))) = root
     getFromTarget m@(TransformationStrict (_,_,(_,_,links))) e = (imageR links [e],m)
     addElementToSource e (TransformationStrict ((root,es,links),t,m')) = TransformationStrict ((root,e:es,links),t,m')
@@ -84,7 +85,6 @@ instance TransformationI TransformationStrict where
             targetLinks = applyPhase t m targetElements
         in TransformationStrict (m, t, (targetRoot,targetElements,targetLinks))
 
--- model strict transformation
 -- it obtains the transformed root and all transformed elements
 matchingPhase :: Transformation -> Model -> (Element,SetOf Element)
 matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
@@ -92,8 +92,17 @@ matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
 applyPhase :: Transformation -> Model -> SetOf Element -> SetOf Link
 applyPhase t m = concatMap (bindingApplication t m)
 
+-- we resolve every time because we don't compute primitive attributes and elements are created by different rules
+-- we compute the full binding (all the links)
+-- transformation -> transformationSourceModel -> targetLinkSource -> targetLinks
+bindingApplication :: Transformation -> Model -> Element -> SetOf Link
+bindingApplication t@(r,cb,crb) m@(_,_,links) targetLinkSource = -- trace (show t ++ show m ++ show targetLinkSource ++ show (inverseImage t [targetLinkSource])) $
+    targetLinkSource `crossProductR` (image t . cb m . inverseImage t) [targetLinkSource]
+
+-- # LAZY TRANSFORMATION SYSTEM
+
 newtype TransformationLazy = TransformationLazy (Model,Transformation,Model)
-instance TransformationI TransformationLazy where
+instance TransformationSystem TransformationLazy where
     getRootFromTarget (TransformationLazy (_,_,(rootT,_,_))) = rootT
     getFromTarget mL@(TransformationLazy (mS,t,mT@(rootT,elementsT,linksT))) e | e `elem` elementsT = (imageR linksT [e],mL)
                                                                                | otherwise
@@ -109,8 +118,10 @@ initialize t m = (m,t,(rootT,[],[]))
      where (root,_,_) = m
            [rootT] = image t [root]
 
+-- # INCREMENTAL TRANSFORMATION SYSTEM
+
 newtype TransformationIncremental = TransformationIncremental (Model, Transformation, Model)
-instance TransformationI TransformationIncremental where
+instance TransformationSystem TransformationIncremental where
     getRootFromTarget(TransformationIncremental (_,_,(rootT,_,_))) = rootT
     getFromTarget m@(TransformationIncremental (_, _, (_,_,links))) e = (imageR links [e],m)
     addElementToSource e (TransformationIncremental ((root,es,links), t, (root',es',links'))) =
@@ -125,13 +136,14 @@ instance TransformationI TransformationIncremental where
                 targetLinks = applyPhase t m targetElements
             in TransformationIncremental (m, t, (targetRoot,targetElements,targetLinks))
 
+-- # REACTIVE TRANSFORMATION SYSTEM
 
 newtype TransformationReactive = TransformationReactive (Model, Transformation, Model)
-instance TransformationI TransformationReactive where
+instance TransformationSystem TransformationReactive where
     getRootFromTarget(TransformationReactive (_,_,(rootT,_,_))) = rootT
     getFromTarget mL@(TransformationReactive (mS,t,mT@(rootT,elementsT,linksT))) e | e `elem` elementsT = (imageR linksT [e],mL)
                                                                                    | otherwise
-                 = let ls = bindingApplication t mS e -- TODO: add also elements
+                 = let ls = bindingApplication t mS e
                        mT1 = (rootT,e:elementsT,ls++linksT)
                    in (imageR (ls++linksT) [e],TransformationReactive (mS, t, mT1))
     addElementToSource e (TransformationReactive ((root,es,links), t, (root',es',links'))) =
@@ -141,11 +153,3 @@ instance TransformationI TransformationReactive where
                                        [ne] = image t (crb msu l)
                                    in TransformationReactive (msu, t, (root',delete ne es',links'))
     apply (TransformationReactive (m,t,_)) = TransformationReactive (initialize t m)
-
-
--- we resolve every time because we don't compute primitive attributes and elements are created by different rules
--- we compute the full binding (all the links)
--- transformation -> transformationSourceModel -> targetLinkSource -> targetLinks
-bindingApplication :: Transformation -> Model -> Element -> SetOf Link
-bindingApplication t@(r,cb,crb) m@(_,_,links) targetLinkSource = -- trace (show t ++ show m ++ show targetLinkSource ++ show (inverseImage t [targetLinkSource])) $
-    targetLinkSource `crossProductR` (image t . cb m . inverseImage t) [targetLinkSource]

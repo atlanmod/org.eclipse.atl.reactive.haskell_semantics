@@ -113,7 +113,7 @@ insertI :: Instruction -> [Instruction] -> [[Instruction]]
 insertI i0 [] = [[i0]]
 insertI i0 (i:is) = (i0:i:is) : map (i:) (insertI i0 is)
 
-runI :: TransformationI m => [Instruction] -> m -> m
+runI :: TransformationSystem m => [Instruction] -> m -> m
 runI []                m = m
 runI (AddElement e:is) m = runI is (addElementToSource e m)
 runI (AddLink    l:is) m = runI is (addLinkToSource l m)

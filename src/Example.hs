@@ -12,7 +12,7 @@ computeReverseBindingE :: Model -> Link -> SetOf Element
 computeBindingE (_,_,links) = imageR links
 computeReverseBindingE (_,_,_) (from, to) = [from]
 
-updateSource :: TransformationI m => m -> m
+updateSource :: TransformationSystem m => m -> m
 updateSource ts = addLinkToSource (A, E) (addElementToSource E ts)
 
 ts0 :: TransformationStrict
