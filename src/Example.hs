@@ -1,6 +1,5 @@
 module Example where
 
-import Data.List
 import Semantics
 
 tre :: Transformation

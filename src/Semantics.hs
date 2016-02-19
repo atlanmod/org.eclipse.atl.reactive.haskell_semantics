@@ -14,7 +14,6 @@ module Semantics where
 
 import Data.Tuple
 import Data.List
-import Debug.Trace
 
 data Element = A | B | C | D | E | F deriving (Show,Eq,Enum) -- distinguish source and target element types?
 
