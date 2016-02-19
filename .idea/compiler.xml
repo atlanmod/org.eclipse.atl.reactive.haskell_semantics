@@ -24,6 +24,7 @@
     <useCabal>true</useCabal>
     <ghcPath>$USER_HOME$/.cabal/bin/ghc</ghcPath>
     <cabalPath>/usr/local/bin/cabal</cabalPath>
+    <enableTests>true</enableTests>
     <stackPath>$USER_HOME$/.cabal/bin/stack</stackPath>
     <stackFile>$PROJECT_DIR$/stack.yaml</stackFile>
   </component>
