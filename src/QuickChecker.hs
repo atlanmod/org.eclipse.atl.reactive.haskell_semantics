@@ -70,10 +70,10 @@ assertion config =
     let (mS,t) = unConfig config
         c = (mS,t,undefined)
     in --valid mS t ==>
-       length (nub [ fst $ getN 3 $ apply $ TransformationStrict c
-                   , fst $ getN 3 $ apply $ TransformationLazy c
-                   , fst $ getN 3 $ apply $ TransformationIncremental c
-                   , fst $ getN 3 $ apply $ TransformationReactive c]) == 1
+       length (nub [ fst $ getNFromTarget 3 $ apply $ TransformationStrict c
+                   , fst $ getNFromTarget 3 $ apply $ TransformationLazy c
+                   , fst $ getNFromTarget 3 $ apply $ TransformationIncremental c
+                   , fst $ getNFromTarget 3 $ apply $ TransformationReactive c]) == 1
 
 test1 = verboseCheckWith stdArgs { maxSuccess = 10 } assertion
 test2 = verboseCheck assertion
@@ -151,10 +151,10 @@ assertion' config =
     let (is,mS,t) = unConfig' config
         c = (mS,t,undefined)
     in --valid mS t ==>
-       length (nub [ fst $ getN 3 $ apply $ runI is $ apply $ TransformationStrict c
-                   , fst $ getN 3 $ apply $ runI is $ apply $ TransformationLazy c
-                   , fst $ getN 3 $ runI is $ apply $ TransformationIncremental c
-                   , fst $ getN 3 $ runI is $ apply $ TransformationReactive c]) == 1
+       length (nub [ fst $ getNFromTarget 3 $ apply $ runI is $ apply $ TransformationStrict c
+                   , fst $ getNFromTarget 3 $ apply $ runI is $ apply $ TransformationLazy c
+                   , fst $ getNFromTarget 3 $ runI is $ apply $ TransformationIncremental c
+                   , fst $ getNFromTarget 3 $ runI is $ apply $ TransformationReactive c]) == 1
 
 -- ([AddElement C,AddLink (A,C)],(A,[A,B],[(A,A),(A,B),(B,B)]),[(A,D),(C,D),(C,F)])
 

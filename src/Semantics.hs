@@ -66,11 +66,11 @@ getAllFromTarget m0 (e:es) = let (est1,m1) = getFromTarget m0 e
                                  (est2,m2) = getAllFromTarget m1 es
                              in (est1 `union` est2,m2)
 
-getN :: TransformationI m => Int -> m -> (SetOf Element, m)
-getN 0 m = ([getRootFromTarget m], m)
-getN n m = let (es', m') = getN (n-1) m
-               (es'', m'') = getAllFromTarget m' es'
-           in (union es' es'', m'')
+getNFromTarget :: TransformationI m => Int -> m -> (SetOf Element, m)
+getNFromTarget 0 m = ([getRootFromTarget m], m)
+getNFromTarget n m = let (es', m') = getNFromTarget (n-1) m
+                         (es'', m'') = getAllFromTarget m' es'
+                     in (union es' es'', m'')
 
 newtype TransformationStrict = TransformationStrict (Model,Transformation,Model)
 
@@ -83,7 +83,6 @@ instance TransformationI TransformationStrict where
         let (targetRoot,targetElements) = matchingPhase t m
             targetLinks = applyPhase t m targetElements
         in TransformationStrict (m, t, (targetRoot,targetElements,targetLinks))
-
 
 -- model strict transformation
 -- it obtains the transformed root and all transformed elements

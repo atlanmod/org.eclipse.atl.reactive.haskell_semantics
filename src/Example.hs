@@ -44,12 +44,12 @@ mReactive' = updateSource $ apply tr0
 
 exampleTest :: IO()
 exampleTest = do
-    print $ show $ fst $ getN 3 mStrict
-    print $ show $ fst $ getN 3 mLazy
-    print $ show $ fst $ getN 3 mIncremental
-    print $ show $ fst $ getN 3 mReactive
+    print $ show $ fst $ getNFromTarget 3 mStrict
+    print $ show $ fst $ getNFromTarget 3 mLazy
+    print $ show $ fst $ getNFromTarget 3 mIncremental
+    print $ show $ fst $ getNFromTarget 3 mReactive
 
-    print $ show $ fst $ getN 3 mStrict'
-    print $ show $ fst $ getN 3 mLazy'
-    print $ show $ fst $ getN 3 mIncremental'
-    print $ show $ fst $ getN 3 mReactive'
+    print $ show $ fst $ getNFromTarget 3 mStrict'
+    print $ show $ fst $ getNFromTarget 3 mLazy'
+    print $ show $ fst $ getNFromTarget 3 mIncremental'
+    print $ show $ fst $ getNFromTarget 3 mReactive'
