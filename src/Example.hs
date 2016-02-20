@@ -52,12 +52,12 @@ exampleTest :: IO()
 exampleTest = do
     print $ "Example 1: "
         ++ (show $ fst $ getNFromTarget 3 mStrict)
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mLazy)
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mIncremental)
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mReactive)
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mLazy)
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mIncremental)
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mReactive)
 
     print $ "Example 2: "
         ++ (show $ fst $ getNFromTarget 3 mStrict')
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mLazy')
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mIncremental')
-        ++ "=" ++ (show $ fst $ getNFromTarget 3 mReactive')
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mLazy')
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mIncremental')
+        ++ "==" ++ (show $ fst $ getNFromTarget 3 mReactive')
