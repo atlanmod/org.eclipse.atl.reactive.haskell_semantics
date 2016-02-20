@@ -12,8 +12,8 @@
 
 module Semantics where
 
-import Data.Tuple
-import Data.List
+import           Data.List
+import           Data.Tuple
 
 -- # MODEL
 
