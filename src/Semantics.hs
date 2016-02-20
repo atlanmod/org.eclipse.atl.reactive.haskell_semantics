@@ -81,17 +81,19 @@ instance TransformationSystem TransformationStrict where
     getFromTarget m@(TransformationStrict (_,_,(_,_,links))) e = (imageR links [e],m)
     addElementToSource e (TransformationStrict ((root,es,links),t,m')) = TransformationStrict ((root,e:es,links),t,m')
     addLinkToSource l (TransformationStrict ((rootS,elementsS,linksS),t,m')) = TransformationStrict ((rootS,elementsS,l:linksS), t, m')
-    apply (TransformationStrict (m, t, _))  =
-        let (targetRoot,targetElements) = matchingPhase t m
-            targetLinks = applyPhase t m targetElements
-        in TransformationStrict (m, t, (targetRoot,targetElements,targetLinks))
+    apply (TransformationStrict (m, t, _))  = TransformationStrict (m, t, strictApply t m)
 
--- it obtains the transformed root and all transformed elements
-matchingPhase :: Transformation -> Model -> (Element,SetOf Element)
-matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
+strictApply :: Transformation -> Model -> Model
+strictApply t m = let (targetRoot,targetElements) = matchingPhase t m
+                      targetLinks = applyPhase t m targetElements
+                  in  (targetRoot,targetElements,targetLinks)
+                  where
+                      -- it obtains the transformed root and all transformed elements
+                      matchingPhase :: Transformation -> Model -> (Element,SetOf Element)
+                      matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
 
-applyPhase :: Transformation -> Model -> SetOf Element -> SetOf Link
-applyPhase t m = concatMap (bindingApplication t m)
+                      applyPhase :: Transformation -> Model -> SetOf Element -> SetOf Link
+                      applyPhase t m = concatMap (bindingApplication t m)
 
 -- we resolve every time because we don't compute primitive attributes and elements are created by different rules
 -- we compute the full binding (all the links)
@@ -132,10 +134,7 @@ instance TransformationSystem TransformationIncremental where
                                    let msu = (root,es,l:links)
                                        ls = foldr union [] $ map (bindingApplication t msu) (image t (crb msu l))
                                    in TransformationIncremental (msu, t, (root',es',ls++links'))
-    apply (TransformationIncremental (m, t, _)) =
-            let (targetRoot,targetElements) = matchingPhase t m
-                targetLinks = applyPhase t m targetElements
-            in TransformationIncremental (m, t, (targetRoot,targetElements,targetLinks))
+    apply (TransformationIncremental (m, t, _)) = TransformationIncremental (m, t,  strictApply t m)
 
 -- # REACTIVE TRANSFORMATION SYSTEM
 
