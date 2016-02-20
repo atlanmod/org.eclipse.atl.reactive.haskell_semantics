@@ -12,7 +12,7 @@ tr = ([(A,C),(B,D),(E,F)], computeBinding, computeReverseBinding)
 computeBinding :: Model -> SetOf Element -> SetOf Element
 computeReverseBinding :: Model -> Link -> SetOf Element
 -- computeBinding (_,_,links) = inverseImage links
-computeBinding (_,_,links) = imageR links
+computeBinding (_,_,links) = image links
 computeReverseBinding (_,_,_) (from, to) = [from]
 
 -- Quicheck generation of source models and transformations

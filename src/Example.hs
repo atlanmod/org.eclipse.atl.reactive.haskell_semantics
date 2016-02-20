@@ -8,7 +8,7 @@ tre :: Transformation
 tre = ([(A,C),(B,D),(E,F)], computeBindingE, computeReverseBindingE)
 
 computeBindingE :: Model -> SetOf Element -> SetOf Element
-computeBindingE (_,_,links) = imageR links
+computeBindingE (_,_,links) = image links
 -- computeBindingE (_,_,links) = inverseImageR links
 
 computeReverseBindingE :: Model -> Link -> SetOf Element
