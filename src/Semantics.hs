@@ -99,7 +99,8 @@ strictApply t m = let (targetRoot,targetElements) = matchPhase t m
 -- we compute the full binding (all the links)
 -- transformation -> transformationSourceModel -> targetLinkSource -> targetLinks
 bindingApplication :: Transformation -> Model -> Element -> SetOf Link
-bindingApplication t@(r,cb,crb) m@(_,_,links) targetLinkSource = -- trace (show t ++ show m ++ show targetLinkSource ++ show (inverseImage t [targetLinkSource])) $
+bindingApplication t@(r,cb,crb) m@(_,_,links) targetLinkSource =
+-- trace (show t ++ show m ++ show targetLinkSource ++ show (inverseImage t [targetLinkSource])) $
     targetLinkSource `crossProductR` (image t . cb m . inverseImage t) [targetLinkSource]
 
 -- # LAZY TRANSFORMATION SYSTEM
@@ -107,11 +108,11 @@ bindingApplication t@(r,cb,crb) m@(_,_,links) targetLinkSource = -- trace (show 
 newtype TransformationLazy = TransformationLazy (Model,Transformation,Model)
 instance TransformationSystem TransformationLazy where
     getRootFromTarget (TransformationLazy (_,_,(rootT,_,_))) = rootT
-    getFromTarget mL@(TransformationLazy (mS,t,mT@(rootT,elementsT,linksT))) e | e `elem` elementsT = (imageR linksT [e],mL)
-                                                                               | otherwise
-             = let ls = bindingApplication t mS e
-                   mT1 = (rootT,e:elementsT,ls++linksT)
-               in (imageR (ls++linksT) [e],TransformationLazy (mS, t, mT1))
+    getFromTarget mL@(TransformationLazy (mS,t,mT@(rootT,elementsT,linksT))) e =
+        if (e `elem` elementsT) then (imageR linksT [e],mL)
+        else let ls = bindingApplication t mS e
+                 mT1 = (rootT,e:elementsT,ls++linksT)
+             in (imageR (ls++linksT) [e],TransformationLazy (mS, t, mT1))
     addElementToSource e (TransformationLazy ((root,es,links),t,m')) = TransformationLazy ((root,e:es,links),t,m')
     addLinkToSource l (TransformationLazy ((rootS,elementsS,linksS),t,m')) = TransformationLazy ((rootS,elementsS,l:linksS), t, m')
     apply (TransformationLazy (m,t,_)) = TransformationLazy (initialize t m)
@@ -128,12 +129,12 @@ instance TransformationSystem TransformationIncremental where
     getRootFromTarget(TransformationIncremental (_,_,(rootT,_,_))) = rootT
     getFromTarget m@(TransformationIncremental (_, _, (_,_,links))) e = (imageR links [e],m)
     addElementToSource e (TransformationIncremental ((root,es,links), t, (root',es',links'))) =
-                                   let [ne] = image t [e]
-                                   in TransformationIncremental ((root,e:es,links), t, (root',ne:es',links'))
+        let [ne] = image t [e]
+        in TransformationIncremental ((root,e:es,links), t, (root',ne:es',links'))
     addLinkToSource l (TransformationIncremental ((root,es,links), t@(_,_,crb), (root',es',links'))) =
-                                   let msu = (root,es,l:links)
-                                       ls = foldr union [] $ map (bindingApplication t msu) (image t (crb msu l))
-                                   in TransformationIncremental (msu, t, (root',es',ls++links'))
+        let msu = (root,es,l:links)
+            ls = foldr union [] $ map (bindingApplication t msu) (image t (crb msu l))
+        in TransformationIncremental (msu, t, (root',es',ls++links'))
     apply (TransformationIncremental (m, t, _)) = TransformationIncremental (m, t,  strictApply t m)
 
 -- # REACTIVE TRANSFORMATION SYSTEM
@@ -141,15 +142,15 @@ instance TransformationSystem TransformationIncremental where
 newtype TransformationReactive = TransformationReactive (Model, Transformation, Model)
 instance TransformationSystem TransformationReactive where
     getRootFromTarget(TransformationReactive (_,_,(rootT,_,_))) = rootT
-    getFromTarget mL@(TransformationReactive (mS,t,mT@(rootT,elementsT,linksT))) e | e `elem` elementsT = (imageR linksT [e],mL)
-                                                                                   | otherwise
-                 = let ls = bindingApplication t mS e
-                       mT1 = (rootT,e:elementsT,ls++linksT)
-                   in (imageR (ls++linksT) [e],TransformationReactive (mS, t, mT1))
+    getFromTarget mL@(TransformationReactive (mS,t,mT@(rootT,elementsT,linksT))) e =
+        if (e `elem` elementsT) then (imageR linksT [e],mL)
+        else let ls = bindingApplication t mS e
+                 mT1 = (rootT,e:elementsT,ls++linksT)
+             in (imageR (ls++linksT) [e],TransformationReactive (mS, t, mT1))
     addElementToSource e (TransformationReactive ((root,es,links), t, (root',es',links'))) =
-                                   TransformationReactive ((root,e:es,links), t, (root',es',links'))
+        TransformationReactive ((root,e:es,links), t, (root',es',links'))
     addLinkToSource l (TransformationReactive ((root,es,links), t@(_,_,crb), (root',es',links'))) =
-                                   let msu = (root,es,l:links)
-                                       [ne] = image t (crb msu l)
-                                   in TransformationReactive (msu, t, (root',delete ne es',links'))
+        let msu = (root,es,l:links)
+            [ne] = image t (crb msu l)
+        in TransformationReactive (msu, t, (root',delete ne es',links'))
     apply (TransformationReactive (m,t,_)) = TransformationReactive (initialize t m)
