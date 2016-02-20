@@ -1,8 +1,8 @@
 module QuickChecker where
 
+import Semantics
 import Test.QuickCheck
 import Data.List
-import Semantics
 
 -- Transformation
 tr :: Transformation
