@@ -6,10 +6,12 @@ tre :: Transformation
 tre = ([(A,C),(B,D),(E,F)], computeBindingE, computeReverseBindingE)
 
 -- sourceModel -> matchedElements -> resultingSourceElements
-computeBindingE :: Model -> SetOf Element -> SetOf Element
-computeReverseBindingE :: Model -> Link -> SetOf Element
 -- computeBinding (_,_,links) = inverseImage links
+
+computeBindingE :: Model -> SetOf Element -> SetOf Element
 computeBindingE (_,_,links) = imageR links
+
+computeReverseBindingE :: Model -> Link -> SetOf Element
 computeReverseBindingE (_,_,_) (from, to) = [from]
 
 updateSource :: TransformationSystem m => m -> m
@@ -44,12 +46,14 @@ mReactive' = updateSource $ apply tr0
 
 exampleTest :: IO()
 exampleTest = do
-    print $ show $ fst $ getNFromTarget 3 mStrict
-    print $ show $ fst $ getNFromTarget 3 mLazy
-    print $ show $ fst $ getNFromTarget 3 mIncremental
-    print $ show $ fst $ getNFromTarget 3 mReactive
+    print $ "Example 1: "
+        ++ (show $ fst $ getNFromTarget 3 mStrict)
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mLazy)
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mIncremental)
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mReactive)
 
-    print $ show $ fst $ getNFromTarget 3 mStrict'
-    print $ show $ fst $ getNFromTarget 3 mLazy'
-    print $ show $ fst $ getNFromTarget 3 mIncremental'
-    print $ show $ fst $ getNFromTarget 3 mReactive'
+    print $ "Example 2: "
+        ++ (show $ fst $ getNFromTarget 3 mStrict')
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mLazy')
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mIncremental')
+        ++ "=" ++ (show $ fst $ getNFromTarget 3 mReactive')
