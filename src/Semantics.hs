@@ -80,7 +80,7 @@ instance TransformationSystem TransformationStrict where
     getRootFromTarget (TransformationStrict (_,_,(root,_,_))) = root
     getFromTarget m@(TransformationStrict (_,_,(_,_,links))) e = (imageR links [e],m)
     addElementToSource e (TransformationStrict ((root,es,links),t,m')) = TransformationStrict ((root,e:es,links),t,m')
-    addLinkToSource l (TransformationStrict ((rootS,elementsS,linksS),t,m')) = TransformationStrict ((rootS,elementsS,l:linksS), t, m')
+    addLinkToSource l (TransformationStrict ((rS,eS,lS),t,m')) = TransformationStrict ((rS,eS,l:lS), t, m')
     apply (TransformationStrict (m, t, _))  = TransformationStrict (m, t, strictApply t m)
 
 strictApply :: Transformation -> Model -> Model
@@ -114,7 +114,7 @@ instance TransformationSystem TransformationLazy where
                  mT1 = (rootT,e:elementsT,ls++linksT)
              in (imageR (ls++linksT) [e],TransformationLazy (mS, t, mT1))
     addElementToSource e (TransformationLazy ((root,es,links),t,m')) = TransformationLazy ((root,e:es,links),t,m')
-    addLinkToSource l (TransformationLazy ((rootS,elementsS,linksS),t,m')) = TransformationLazy ((rootS,elementsS,l:linksS), t, m')
+    addLinkToSource l (TransformationLazy ((rS,eS,lS),t,m')) = TransformationLazy ((rS,eS,l:lS), t, m')
     apply (TransformationLazy (m,t,_)) = TransformationLazy (initialize t m)
 
 initialize :: Transformation -> Model -> (Model,Transformation,Model)
