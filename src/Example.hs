@@ -2,6 +2,8 @@ module Example where
 
 import Semantics
 
+-- # TRANSFORMATION
+
 tre :: Transformation
 tre = ([(A,C),(B,D),(E,F)], computeBindingE, computeReverseBindingE)
 
@@ -12,8 +14,12 @@ computeBindingE (_,_,links) = imageR links
 computeReverseBindingE :: Model -> Link -> SetOf Element
 computeReverseBindingE (_,_,_) (from, to) = [from]
 
+-- # UPDATE
+
 updateSource :: TransformationSystem m => m -> m
 updateSource ts = addLinkToSource (A, E) (addElementToSource E ts)
+
+-- # TEST EXECUTION
 
 ts0 :: TransformationStrict
 ts0 = TransformationStrict ((A,[A,B],[(A,B)]), tre, undefined)
