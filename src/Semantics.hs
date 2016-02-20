@@ -84,13 +84,13 @@ instance TransformationSystem TransformationStrict where
     apply (TransformationStrict (m, t, _))  = TransformationStrict (m, t, strictApply t m)
 
 strictApply :: Transformation -> Model -> Model
-strictApply t m = let (targetRoot,targetElements) = matchingPhase t m
+strictApply t m = let (targetRoot,targetElements) = matchPhase t m
                       targetLinks = applyPhase t m targetElements
                   in  (targetRoot,targetElements,targetLinks)
                   where
                       -- it obtains the transformed root and all transformed elements
-                      matchingPhase :: Transformation -> Model -> (Element,SetOf Element)
-                      matchingPhase t (root,elements,_) = (head (image t [root]),image t elements)
+                      matchPhase :: Transformation -> Model -> (Element,SetOf Element)
+                      matchPhase t (root,elements,_) = (head (image t [root]),image t elements)
 
                       applyPhase :: Transformation -> Model -> SetOf Element -> SetOf Link
                       applyPhase t m = concatMap (bindingApplication t m)
