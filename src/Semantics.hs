@@ -54,24 +54,24 @@ crossProductR e1 es2 = [ (e1,e2) | e2 <- es2 ]
 
 -- # TRANSFORMATION SYSTEM
 
-class TransformationSystem m where  -- MONADIC (State) ?
-    apply :: m -> m -- should be implicit in the constructor ?
-    getFromTarget :: m -> Element -> (SetOf Element,m)
-    getRootFromTarget :: m -> Element
-    addElementToSource :: Element -> m -> m
-    addLinkToSource :: Link -> m -> m
+class TransformationSystem ts where  -- MONADIC (State) ?
+    apply :: ts -> ts -- should be implicit in the constructor ?
+    getFromTarget :: ts -> Element -> (SetOf Element,ts)
+    getRootFromTarget :: ts -> Element
+    addElementToSource :: Element -> ts -> ts
+    addLinkToSource :: Link -> ts -> ts
 
-getAllFromTarget :: TransformationSystem m => m -> SetOf Element -> (SetOf Element, m)
-getAllFromTarget m0 [] = ([],m0)
-getAllFromTarget m0 (e:es) = let (est1,m1) = getFromTarget m0 e
-                                 (est2,m2) = getAllFromTarget m1 es
-                             in (est1 `union` est2,m2)
+getAllFromTarget :: TransformationSystem ts => ts -> SetOf Element -> (SetOf Element, ts)
+getAllFromTarget ts0 [] = ([],ts0)
+getAllFromTarget ts0 (e:es) = let (est1,ts1) = getFromTarget ts0 e
+                                  (est2,ts2) = getAllFromTarget ts1 es
+                              in (est1 `union` est2,ts2)
 
-getNFromTarget :: TransformationSystem m => Int -> m -> (SetOf Element, m)
-getNFromTarget 0 m = ([getRootFromTarget m], m)
-getNFromTarget n m = let (es', m') = getNFromTarget (n-1) m
-                         (es'', m'') = getAllFromTarget m' es'
-                     in (union es' es'', m'')
+getNFromTarget :: TransformationSystem ts => Int -> ts -> (SetOf Element, ts)
+getNFromTarget 0 ts = ([getRootFromTarget ts], ts)
+getNFromTarget n ts = let (es', ts') = getNFromTarget (n-1) ts
+                          (es'', ts'') = getAllFromTarget ts' es'
+                      in (union es' es'', ts'')
 
 -- # STRICT TRANSFORMATION SYSTEM
 
