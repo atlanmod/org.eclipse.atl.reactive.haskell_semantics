@@ -30,6 +30,7 @@ type SetOf a = [a]
 -- # TRANSFORMATION
 
 -- Transformation = (Relation, computeBinding, computeReverseBinding)
+-- computeBinding :: sourceModel -> matchedElements -> resultingSourceElements
 type Transformation = (Relation, Model -> SetOf Element -> SetOf Element, Model -> Link -> SetOf Element)
 --distinguish relation and function? and bijection?
 type Relation = SetOf (Element,Element)

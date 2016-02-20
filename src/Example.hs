@@ -5,11 +5,9 @@ import Semantics
 tre :: Transformation
 tre = ([(A,C),(B,D),(E,F)], computeBindingE, computeReverseBindingE)
 
--- sourceModel -> matchedElements -> resultingSourceElements
--- computeBinding (_,_,links) = inverseImage links
-
 computeBindingE :: Model -> SetOf Element -> SetOf Element
 computeBindingE (_,_,links) = imageR links
+-- computeBindingE (_,_,links) = inverseImageR links
 
 computeReverseBindingE :: Model -> Link -> SetOf Element
 computeReverseBindingE (_,_,_) (from, to) = [from]
