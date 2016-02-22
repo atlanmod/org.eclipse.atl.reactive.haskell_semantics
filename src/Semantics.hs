@@ -40,8 +40,8 @@ image r es = nub (concatMap (image1 r) es)
     where image1 :: Relation -> Element -> SetOf Element
           image1 r1 e = [ e2 | (e1,e2) <- r1, e1==e ]
 
-inverseimage :: Relation -> SetOf Element -> SetOf Element
-inverseimage = image . map swap
+inverseImage :: Relation -> SetOf Element -> SetOf Element
+inverseImage = image . map swap
 
 crossProduct :: Element -> SetOf Element -> Relation
 crossProduct e1 es2 = [ (e1,e2) | e2 <- es2 ]
@@ -95,7 +95,7 @@ strictApply t m = let (targetRoot,targetElements) = matchPhase t m
 bindingApplication :: Transformation -> Model -> Element -> SetOf Link
 bindingApplication (r,cb,_) m targetLinkSource =
 -- trace (show t ++ show m ++ show targetLinkSource ++ show (inverseImage t [targetLinkSource])) $
-    targetLinkSource `crossProduct` (image r . cb m . inverseimage r) [targetLinkSource]
+    targetLinkSource `crossProduct` (image r . cb m . inverseImage r) [targetLinkSource]
 
 -- # LAZY TRANSFORMATION SYSTEM
 
