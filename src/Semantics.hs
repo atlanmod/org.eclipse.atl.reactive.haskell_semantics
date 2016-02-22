@@ -48,8 +48,8 @@ crossProduct e1 es2 = [ (e1,e2) | e2 <- es2 ]
 
 -- # TRANSFORMATION SYSTEM
 
-class TransformationSystem ts where  -- MONADIC (State) ?
-    apply :: ts -> ts -- should be implicit in the constructor ?
+class TransformationSystem ts where
+    apply :: ts -> ts
     getFromTarget :: ts -> Element -> (SetOf Element,ts)
     getRootFromTarget :: ts -> Element
     addElementToSource :: Element -> ts -> ts
