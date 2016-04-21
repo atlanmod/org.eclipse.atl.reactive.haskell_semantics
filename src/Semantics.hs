@@ -21,6 +21,9 @@ import           Data.Tuple
 -- in lazy semantics (root, all elements with valid outgoing references, all links from valid elements)
 type Model = (Element,SetOf Element,SetOf Link)
 
+deleteElement :: Element -> Model -> Model
+deleteElement e (root,es,links) | e /= root = (root, filter (e/=) es ,filter (\ (s,t) -> s/=e && t/=e) links)
+
 data Element = A | B | C | D | E | F deriving (Show,Eq,Enum) -- distinguish source and target element types?
 
 type Link = (Element,Element)
@@ -53,6 +56,7 @@ class TransformationSystem ts where
     getFromTarget :: ts -> Element -> (SetOf Element,ts)
     getRootFromTarget :: ts -> Element
     addElementToSource :: Element -> ts -> ts
+    deleteElementFromSource :: Element -> ts -> ts
     addLinkToSource :: Link -> ts -> ts
 
 getAllFromTarget :: TransformationSystem ts => ts -> SetOf Element -> (SetOf Element, ts)
@@ -74,6 +78,7 @@ instance TransformationSystem TransformationStrict where
     getRootFromTarget (TransformationStrict (_,_,(root,_,_))) = root
     getFromTarget m@(TransformationStrict (_,_,(_,_,links))) e = (image links [e],m)
     addElementToSource e (TransformationStrict ((root,es,links),t,m')) = TransformationStrict ((root,e:es,links),t,m')
+    deleteElementFromSource e (TransformationStrict (m,t,m')) = TransformationStrict (deleteElement e m,t,m')
     addLinkToSource l (TransformationStrict ((rS,eS,lS),t,m')) = TransformationStrict ((rS,eS,l:lS), t, m')
     apply (TransformationStrict (m, t, _))  = TransformationStrict (m, t, strictApply t m)
 
@@ -108,6 +113,7 @@ instance TransformationSystem TransformationLazy where
                  mT1 = (rootT,e:elementsT,ls++linksT)
              in (image (ls++linksT) [e],TransformationLazy (mS, t, mT1))
     addElementToSource e (TransformationLazy ((root,es,links),t,m')) = TransformationLazy ((root,e:es,links),t,m')
+    deleteElementFromSource e (TransformationLazy (m,t,m')) = apply (TransformationLazy (deleteElement e m,t,m'))
     addLinkToSource l (TransformationLazy ((rS,eS,lS),t,m')) = TransformationLazy ((rS,eS,l:lS), t, m')
     apply (TransformationLazy (m,t,_)) = TransformationLazy (initialize t m)
 
@@ -125,6 +131,9 @@ instance TransformationSystem TransformationIncremental where
     addElementToSource e (TransformationIncremental ((root,es,links), t@(r,_,_), (root',es',links'))) =
         let [ne] = image r [e]
         in TransformationIncremental ((root,e:es,links), t, (root',ne:es',links'))
+    deleteElementFromSource e (TransformationIncremental (ms, t@(r,_,_), mt)) =
+            let [ne] = image r [e]
+            in TransformationIncremental (deleteElement e ms, t, deleteElement ne mt)
     addLinkToSource l (TransformationIncremental ((root,es,links), t@(r,_,crb), (root',es',links'))) =
         let msu = (root,es,l:links)
             ls = foldr (union . bindingApplication t msu) [] (image r (crb msu l))
@@ -139,10 +148,15 @@ instance TransformationSystem TransformationReactive where
     getFromTarget mL@(TransformationReactive (mS,t,(rootT,elementsT,linksT))) e =
         if e `elem` elementsT then (image linksT [e],mL)
         else let ls = bindingApplication t mS e
+                 es2delete = image linksT [e] \\ image ls [e]
                  mT1 = (rootT,e:elementsT,ls++linksT)
-             in (image (ls++linksT) [e],TransformationReactive (mS, t, mT1))
+                 mT2 = foldr deleteElement mT1 es2delete
+             in (image (ls++linksT) [e],TransformationReactive (mS, t, mT2))
     addElementToSource e (TransformationReactive ((root,es,links), t, (root',es',links'))) =
         TransformationReactive ((root,e:es,links), t, (root',es',links'))
+    deleteElementFromSource e (TransformationReactive (ms, t@(r,_,_), (root',es',links'))) =
+                let [ne] = image r [e]
+                in TransformationReactive (deleteElement e ms, t, (root', filter (\e ->  notElem (e, ne) links') es' ,links'))
     addLinkToSource l (TransformationReactive ((root,es,links), t@(r,_,crb), (root',es',links'))) =
         let msu = (root,es,l:links)
             [ne] = image r (crb msu l)

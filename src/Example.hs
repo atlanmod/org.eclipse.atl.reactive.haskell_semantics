@@ -17,7 +17,7 @@ computeReverseBindingE (_,_,_) (from, to) = [from]
 -- # UPDATE
 
 updateSource :: TransformationSystem m => m -> m
-updateSource ts = addLinkToSource (A, E) (addElementToSource E ts)
+updateSource ts = deleteElementFromSource B (addLinkToSource (A, E) (addElementToSource E ts))
 
 -- # TEST EXECUTION
 
